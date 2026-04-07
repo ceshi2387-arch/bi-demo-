@@ -1614,7 +1614,8 @@ function drParseDate(s){
 function drFmtDate(y,m,d){return`${y}/${m}/${d}`;}
 
 function drRenderCal(){
-  const y=_drCalYear,m=_drCalMonth;
+  let y=_drCalYear,m=_drCalMonth;
+  if(!y||!m||isNaN(y)||isNaN(m)){const now=new Date();y=now.getFullYear();m=now.getMonth()+1;_drCalYear=y;_drCalMonth=m;}
   const MONTHS=['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月'];
   document.getElementById('dr-cal-title').textContent=`${y}年 ${MONTHS[m-1]}`;
   const dateSet=new Set(_drDates);
@@ -1695,7 +1696,7 @@ async function renderDaily(){
       return r;
     });
     const dateSet=new Set(_drAllRows.map(r=>r['日期']));
-    _drDates=[...dateSet].sort();
+    _drDates=sortDates([...dateSet]);
   }catch(e){
     _drDates=[];
   }
