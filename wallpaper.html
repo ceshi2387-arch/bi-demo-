@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<title>无极运营三部 · 壁纸</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#000}
+canvas#bg{position:fixed;inset:0;width:100%;height:100%}
+
+/* ── 地板反射层 ── */
+.floor{
+  position:fixed;bottom:0;left:0;right:0;height:38%;
+  background:linear-gradient(to bottom,transparent,rgba(0,20,40,.85));
+  pointer-events:none;
+}
+.floor-grid{
+  position:fixed;bottom:0;left:0;right:0;height:38%;
+  background-image:
+    linear-gradient(rgba(0,255,255,.07) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,255,255,.07) 1px,transparent 1px);
+  background-size:60px 40px;
+  transform:perspective(600px) rotateX(60deg);
+  transform-origin:bottom center;
+  pointer-events:none;
+}
+
+/* ── 扫描线 ── */
+.scanlines{
+  position:fixed;inset:0;
+  background:repeating-linear-gradient(
+    0deg,
+    transparent,transparent 2px,
+    rgba(0,0,0,.08) 2px,rgba(0,0,0,.08) 4px
+  );
+  pointer-events:none;
+  z-index:10;
+}
+
+/* ── 主内容 ── */
+.content{
+  position:fixed;inset:0;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  z-index:5;
+  padding-bottom:12%;
+}
+
+.brand{
+  font-family:"PingFang SC","Microsoft YaHei",sans-serif;
+  font-size:clamp(2rem,5vw,4.5rem);
+  font-weight:900;
+  letter-spacing:.25em;
+  color:#fff;
+  text-shadow:
+    0 0 20px rgba(0,255,255,.9),
+    0 0 60px rgba(0,255,255,.5),
+    0 0 120px rgba(0,200,255,.3);
+  margin-bottom:.3em;
+  animation:pulse 3s ease-in-out infinite;
+}
+.brand span{
+  color:#0ff;
+  text-shadow:
+    0 0 10px #0ff,
+    0 0 40px #0ff,
+    0 0 80px #0af;
+}
+
+.sub{
+  font-family:"PingFang SC","Microsoft YaHei",sans-serif;
+  font-size:clamp(.7rem,1.5vw,1.1rem);
+  letter-spacing:.5em;
+  color:rgba(0,255,255,.6);
+  text-transform:uppercase;
+  margin-bottom:3em;
+  animation:pulse 3s ease-in-out infinite .5s;
+}
+
+/* ── 数据条 ── */
+.stats{
+  display:flex;gap:clamp(20px,4vw,60px);
+  align-items:center;
+}
+.stat-item{
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  padding:16px 24px;
+  border:1px solid rgba(0,255,255,.25);
+  background:rgba(0,20,40,.6);
+  backdrop-filter:blur(8px);
+  position:relative;
+  clip-path:polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%);
+  animation:statIn .6s ease both;
+}
+.stat-item::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(0,255,255,.06),transparent);
+  pointer-events:none;
+}
+.stat-item:nth-child(1){animation-delay:.2s}
+.stat-item:nth-child(2){animation-delay:.35s}
+.stat-item:nth-child(3){animation-delay:.5s}
+.stat-item:nth-child(4){animation-delay:.65s}
+
+.stat-val{
+  font-family:"SF Mono","Menlo",monospace;
+  font-size:clamp(1.2rem,2.5vw,2rem);
+  font-weight:700;
+  color:#0ff;
+  text-shadow:0 0 15px rgba(0,255,255,.8);
+  letter-spacing:.05em;
+}
+.stat-label{
+  font-family:"PingFang SC","Microsoft YaHei",sans-serif;
+  font-size:clamp(.55rem,.9vw,.72rem);
+  color:rgba(0,255,255,.5);
+  letter-spacing:.2em;
+  text-transform:uppercase;
+}
+
+.divider{width:1px;height:50px;background:linear-gradient(to bottom,transparent,rgba(0,255,255,.4),transparent)}
+
+/* ── 底部标语 ── */
+.tagline{
+  position:fixed;bottom:5%;left:50%;transform:translateX(-50%);
+  font-family:"PingFang SC","Microsoft YaHei",sans-serif;
+  font-size:clamp(.6rem,1vw,.8rem);
+  letter-spacing:.4em;
+  color:rgba(0,255,255,.3);
+  white-space:nowrap;
+  z-index:5;
+}
+
+/* ── 角落装饰 ── */
+.corner{position:fixed;width:60px;height:60px;z-index:6}
+.corner::before,.corner::after{content:'';position:absolute;background:rgba(0,255,255,.5)}
+.corner.tl{top:24px;left:24px}
+.corner.tr{top:24px;right:24px;transform:scaleX(-1)}
+.corner.bl{bottom:24px;left:24px;transform:scaleY(-1)}
+.corner.br{bottom:24px;right:24px;transform:scale(-1,-1)}
+.corner::before{top:0;left:0;width:100%;height:2px}
+.corner::after{top:0;left:0;width:2px;height:100%}
+
+/* ── 霓虹横线 ── */
+.neon-line{
+  position:fixed;left:0;right:0;height:2px;z-index:4;
+  background:linear-gradient(90deg,
+    transparent 0%,
+    rgba(0,255,255,.0) 10%,
+    rgba(0,255,255,.8) 30%,
+    rgba(255,80,200,.9) 50%,
+    rgba(0,255,255,.8) 70%,
+    rgba(0,255,255,.0) 90%,
+    transparent 100%
+  );
+  box-shadow:0 0 20px rgba(0,255,255,.6),0 0 60px rgba(200,0,255,.3);
+  animation:scanH 8s linear infinite;
+}
+
+@keyframes pulse{
+  0%,100%{opacity:1}
+  50%{opacity:.85}
+}
+@keyframes statIn{
+  from{opacity:0;transform:translateY(20px)}
+  to{opacity:1;transform:translateY(0)}
+}
+@keyframes scanH{
+  0%{top:-2px;opacity:0}
+  5%{opacity:1}
+  95%{opacity:1}
+  100%{top:100%;opacity:0}
+}
+</style>
+</head>
+<body>
+
+<canvas id="bg"></canvas>
+<div class="floor-grid"></div>
+<div class="floor"></div>
+<div class="scanlines"></div>
+
+<div class="corner tl"></div>
+<div class="corner tr"></div>
+<div class="corner bl"></div>
+<div class="corner br"></div>
+<div class="neon-line"></div>
+
+<div class="content">
+  <div class="brand">无极运营<span>三部</span></div>
+  <div class="sub">数 据 大 盘 · DATA INTELLIGENCE</div>
+  <div class="stats">
+    <div class="stat-item">
+      <div class="stat-val" id="v-dau">—</div>
+      <div class="stat-label">总日活</div>
+    </div>
+    <div class="divider"></div>
+    <div class="stat-item">
+      <div class="stat-val" id="v-new">—</div>
+      <div class="stat-label">总新增</div>
+    </div>
+    <div class="divider"></div>
+    <div class="stat-item">
+      <div class="stat-val" id="v-rev">—</div>
+      <div class="stat-label">总收入</div>
+    </div>
+    <div class="divider"></div>
+    <div class="stat-item">
+      <div class="stat-val" id="v-proj">14</div>
+      <div class="stat-label">产品数</div>
+    </div>
+  </div>
+</div>
+
+<div class="tagline">WUJI OPERATIONS · DIVISION III · BI PLATFORM</div>
+
+<script>
+// ── 数字雨 canvas ──────────────────────────────────────────────────
+const canvas = document.getElementById('bg');
+const ctx = canvas.getContext('2d');
+
+function resize(){
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+const CHARS = '0123456789ABCDEF日活新增充值导量留存运营三部无极';
+const FONT_SIZE = 14;
+let cols, drops;
+
+function initDrops(){
+  cols = Math.floor(canvas.width / FONT_SIZE);
+  drops = Array.from({length: cols}, () => Math.random() * -100);
+}
+initDrops();
+window.addEventListener('resize', initDrops);
+
+function drawRain(){
+  ctx.fillStyle = 'rgba(0,0,0,0.05)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  for(let i = 0; i < drops.length; i++){
+    const char = CHARS[Math.floor(Math.random() * CHARS.length)];
+    const y = drops[i] * FONT_SIZE;
+    const x = i * FONT_SIZE;
+
+    // 头部亮
+    if(drops[i] > 1){
+      ctx.fillStyle = '#fff';
+      ctx.shadowColor = '#0ff';
+      ctx.shadowBlur = 8;
+      ctx.font = `bold ${FONT_SIZE}px monospace`;
+      ctx.fillText(char, x, y - FONT_SIZE);
+    }
+
+    // 主体青色
+    const alpha = 0.3 + Math.random() * 0.4;
+    ctx.fillStyle = `rgba(0,220,255,${alpha})`;
+    ctx.shadowColor = 'rgba(0,255,255,0.3)';
+    ctx.shadowBlur = 4;
+    ctx.font = `${FONT_SIZE}px monospace`;
+    ctx.fillText(char, x, y);
+
+    if(y > canvas.height && Math.random() > 0.975){
+      drops[i] = 0;
+    }
+    drops[i] += 0.5 + Math.random() * 0.3;
+  }
+  ctx.shadowBlur = 0;
+}
+
+setInterval(drawRain, 40);
+
+// ── 从 Google Sheets 拉数据显示在壁纸上 ──────────────────────────
+const GS_URL='https://docs.google.com/spreadsheets/d/1C1vw6Lg9HuwKfcrUthoaRiAe_aZMPdnj6_shMu_scI0/export?format=csv&gid=85925194';
+
+function n(v){return Number(String(v).replace(/,/g,''))||0;}
+function fmt(v){if(v>=10000)return(v/10000).toFixed(1)+'万';return v.toLocaleString();}
+
+async function loadStats(){
+  try{
+    const text = await fetch(GS_URL).then(r=>r.text());
+    const lines = text.trim().split('\n').filter(l=>l.trim());
+    const header = lines[0].split(',');
+    const idxDate = header.indexOf('日期');
+    const idxDau  = header.indexOf('日活');
+    const idxNew  = header.indexOf('总新增');
+    const idxSelf = header.indexOf('新增充值');
+    const idxLead = header.indexOf('内部导流充值');
+    const idxAd   = header.indexOf('广告收入');
+
+    const dates = [];
+    const rowMap = {};
+    for(let i=1;i<lines.length;i++){
+      const v = lines[i].split(',');
+      const d = (v[idxDate]||'').trim();
+      if(!d.match(/^\d{4}/))continue;
+      if(!rowMap[d])rowMap[d]=[];
+      rowMap[d].push(v);
+    }
+    const allDates = Object.keys(rowMap).sort();
+    if(!allDates.length)return;
+    const latest = allDates[allDates.length-1];
+    const rows = rowMap[latest];
+
+    let totDau=0,totNew=0,totRev=0;
+    rows.forEach(v=>{
+      totDau += n(v[idxDau]);
+      totNew += n(v[idxNew]);
+      totRev += n(v[idxSelf]) + n(v[idxLead]) + n(v[idxAd]);
+    });
+
+    animCount('v-dau', totDau);
+    animCount('v-new', totNew);
+    document.getElementById('v-rev').textContent = fmt(totRev)+'元';
+  }catch(e){
+    console.warn('数据加载失败',e);
+  }
+}
+
+function animCount(id, target){
+  const el = document.getElementById(id);
+  let cur = 0;
+  const step = Math.max(1, Math.floor(target / 60));
+  const t = setInterval(()=>{
+    cur = Math.min(cur + step, target);
+    el.textContent = cur >= 10000 ? (cur/10000).toFixed(1)+'万' : cur.toLocaleString();
+    if(cur >= target) clearInterval(t);
+  }, 20);
+}
+
+loadStats();
+</script>
+</body>
+</html>

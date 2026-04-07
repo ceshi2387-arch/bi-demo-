@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>无极运营三部 · 日报提交</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue",sans-serif;
+  background:#F2F2F7;min-height:100vh;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:32px 20px;color:#1C1C1E;
+}
+body::before{
+  content:'';position:fixed;width:600px;height:600px;top:-200px;left:-150px;
+  background:radial-gradient(circle,rgba(94,92,230,.15) 0%,transparent 70%);
+  filter:blur(80px);border-radius:50%;pointer-events:none;
+}
+.wrap{width:100%;max-width:620px;position:relative;z-index:1}
+h1{font-size:1.3rem;font-weight:700;text-align:center;margin-bottom:4px}
+h1 span{color:#5E5CE6}
+.sub{text-align:center;font-size:.8rem;color:#6E6E73;margin-bottom:24px}
+.card{
+  background:rgba(255,255,255,.78);
+  backdrop-filter:blur(40px) saturate(200%);
+  -webkit-backdrop-filter:blur(40px) saturate(200%);
+  border:1px solid rgba(255,255,255,.9);
+  box-shadow:0 2px 20px rgba(0,0,0,.07);
+  border-radius:18px;padding:20px;
+}
+textarea{
+  width:100%;height:420px;
+  border:1.5px solid rgba(0,0,0,.1);border-radius:12px;
+  padding:14px;font-family:inherit;font-size:.85rem;
+  line-height:1.7;color:#1C1C1E;background:rgba(255,255,255,.9);
+  resize:vertical;outline:none;transition:border-color .15s;
+}
+textarea:focus{border-color:#5E5CE6}
+textarea::placeholder{color:#AEAEB2}
+.btn-row{display:flex;gap:10px;margin-top:12px}
+.btn{
+  flex:1;padding:13px;border-radius:12px;border:none;
+  font-family:inherit;font-size:.9rem;font-weight:700;cursor:pointer;
+  transition:opacity .15s;
+}
+.btn-submit{background:#5E5CE6;color:#fff}
+.btn-clear{background:rgba(0,0,0,.07);color:#6E6E73;flex:0 0 80px}
+.btn:hover{opacity:.85}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.status{
+  margin-top:14px;padding:11px 14px;border-radius:10px;
+  font-size:.82rem;font-weight:600;text-align:center;display:none;
+}
+.status.ok{background:rgba(52,199,89,.12);color:#34C759}
+.status.err{background:rgba(255,59,48,.1);color:#FF3B30}
+.status.loading{background:rgba(94,92,230,.1);color:#5E5CE6}
+.hint{
+  margin-top:16px;padding:14px 16px;border-radius:12px;
+  background:rgba(94,92,230,.06);border:1px solid rgba(94,92,230,.12);
+  font-size:.72rem;color:#6E6E73;line-height:1.6;
+}
+.hint strong{color:#5E5CE6}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>无极运营<span>三部</span></h1>
+  <p class="sub">每日工作日报提交</p>
+
+  <div class="card">
+    <textarea id="report" placeholder="将日报文本粘贴到这里，然后点击提交…
+
+【日期】2026/04/01
+【姓名】张三
+【部门】运营三部1组
+
+一、今日完成工作
+1. …
+
+二、遇到的问题
+1. …
+
+三、需协调事项
+1. …
+
+四、明日工作计划
+1. …
+
+五、AI工具/自动化使用情况
+1.
+工具名称：…"></textarea>
+
+    <div class="btn-row">
+      <button class="btn btn-clear" onclick="document.getElementById('report').value=''">清空</button>
+      <button class="btn btn-submit" id="submitBtn" onclick="submit()">提 交</button>
+    </div>
+    <div class="status" id="status"></div>
+  </div>
+
+  <div class="hint">
+    <strong>填写格式要求：</strong><br>
+    第1行 <strong>【日期】</strong>，第2行 <strong>【姓名】</strong>，第3行 <strong>【部门】</strong><br>
+    五个章节以 <strong>一、二、三、四、五、</strong> 开头，AI工具每条以数字序号开头
+  </div>
+</div>
+
+<script>
+// ── 填入 Apps Script 部署 URL ──────────────────────────────────────────
+const SUBMIT_URL = 'https://script.google.com/macros/s/AKfycbxtPfPAKZh5p_msk8nITYno5UZSfYEv5smV7XgxWi3MlvBy0AjB_z-SyoEaMFsZ2Q/exec';
+
+function parseReport(text) {
+  const get = (key) => {
+    const m = text.match(new RegExp(`【${key}】(.+)`));
+    return m ? m[1].trim() : '';
+  };
+
+  const section = (start, end) => {
+    const re = new RegExp(`${start}[、.．]?[^\\n]*\\n([\\s\\S]*?)(?=${end}|$)`);
+    const m = text.match(re);
+    return m ? m[1].trim() : '';
+  };
+
+  // 解析AI工具（每个工具以 "数字." 开头）
+  const aiRaw = section('五', '$');
+  const tools = [];
+  if (aiRaw) {
+    const blocks = aiRaw.split(/\n(?=\d+[.．])/);
+    blocks.forEach(b => {
+      if (!b.trim()) return;
+      const kv = (k) => {
+        const m = b.match(new RegExp(`${k}[：:](.*?)(?:[。\n]|$)`));
+        return m ? m[1].trim() : '';
+      };
+      const name = kv('工具名称');
+      if (!name) return;
+      tools.push({
+        工具名称: name,
+        使用场景: kv('使用场景'),
+        完成内容: kv('完成内容'),
+        使用次数: kv('使用次数').replace(/次/,''),
+        成功率:   kv('成功率').replace(/%|％/,''),
+        节省工时: kv('节省工时').replace(/分钟/,''),
+        字符消耗量: kv('字符消耗量'),
+        问题建议: kv('问题[/／]优化建议') || kv('问题'),
+      });
+    });
+  }
+
+  return {
+    提交时间: new Date().toLocaleString('zh-CN'),
+    日期:     get('日期'),
+    员工ID:   get('员工ID') || get('工号') || '',
+    姓名:     get('姓名'),
+    部门:     get('部门'),
+    今日完成工作: section('一', '二'),
+    遇到的问题:   section('二', '三'),
+    需协调事项:   section('三', '四'),
+    明日工作计划: section('四', '五'),
+    AI工具: tools,
+  };
+}
+
+function showStatus(msg, type) {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = `status ${type}`;
+  el.style.display = 'block';
+}
+
+async function submit() {
+  const text = document.getElementById('report').value.trim();
+  if (!text) { showStatus('请先粘贴日报内容', 'err'); return; }
+  if (!text.includes('【姓名】')) { showStatus('格式不正确，请检查是否包含【姓名】等字段', 'err'); return; }
+
+  const data = parseReport(text);
+  if (!data.姓名) { showStatus('未能识别姓名，请检查格式', 'err'); return; }
+
+  if (!SUBMIT_URL) {
+    showStatus(`✓ 解析成功：${data.姓名} · ${data.日期}（待接入提交地址）`, 'ok');
+    return;
+  }
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  showStatus('提交中…', 'loading');
+
+  try {
+    await fetch(SUBMIT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {'Content-Type': 'text/plain;charset=utf-8'},
+      body: JSON.stringify(data),
+    });
+    showStatus(`✓ ${data.姓名} 的日报已提交成功！`, 'ok');
+    document.getElementById('report').value = '';
+  } catch(e) {
+    showStatus('提交失败，请重试', 'err');
+  }
+  btn.disabled = false;
+}
+</script>
+</body>
+</html>
