@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>无极运营三部数据大盘</title>
+<title>无极运营三部数据</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 :root{
@@ -11,17 +13,20 @@
   --red:#DC2626;--green:#16A34A;
   --text:#111;--muted:#555;--muted2:#999;
   --border:#111;--card:#fff;
+  --font:'Noto Sans SC',-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
 }
 
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
 body{
-  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Inter","Helvetica Neue",sans-serif;
+  font-family:var(--font);
   min-height:100vh;
   padding:32px 36px;
   color:var(--text);
   background:transparent;
   overflow-x:hidden;
+  font-weight:700;
+  -webkit-font-smoothing:antialiased;
 }
 
 body::before,body::after{content:none}
@@ -65,7 +70,7 @@ body::after{content:none}
   margin-bottom:28px;padding-bottom:20px;
   border-bottom:2px solid #111;
 }
-.page-header h1{font-size:1.85rem;font-weight:900;letter-spacing:-.04em;color:#111}
+.page-header h1{font-size:2rem;font-weight:900;letter-spacing:.02em;color:#111;font-family:var(--font)}
 .page-header h1 span{color:#7C3AED}
 .page-header .meta{font-size:.78rem;color:var(--muted);text-align:right;line-height:1.9}
 .date-badge{
@@ -86,22 +91,23 @@ body::after{content:none}
 .tab-btn{
   padding:7px 22px;border-radius:5px;border:none;
   background:transparent;color:#666;
-  font-family:inherit;font-size:.85rem;font-weight:600;
+  font-family:var(--font);font-size:.85rem;font-weight:700;
   cursor:pointer;transition:all .15s;
 }
 .tab-btn.active{
   background:#111;
-  color:#fff;font-weight:700;
+  color:#fff;font-weight:900;
 }
 
 .tab-panel{display:block}
 .tab-panel.hidden{display:none}
 
 .section-title{
-  font-size:.65rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
+  font-size:.72rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;
   color:#111;margin-bottom:14px;display:flex;align-items:center;gap:10px;
+  font-family:var(--font);
 }
-.section-title::after{content:'';flex:1;height:2px;background:#111}
+.section-title::after{content:'';flex:1;height:2.5px;background:#111}
 
 .card{border-radius:10px;padding:20px 22px;margin-bottom:16px}
 
@@ -219,14 +225,14 @@ body::after{content:none}
 
 /* ── 指标切换 ── */
 .metric-switcher{display:flex;gap:4px;flex-shrink:0}
-.metric-btn{padding:3px 10px;border-radius:4px;font-size:.68rem;font-weight:700;border:2px solid #111;background:#fff;color:#555;cursor:pointer;transition:all .15s}
+.metric-btn{padding:3px 10px;border-radius:4px;font-size:.68rem;font-weight:900;border:2px solid #111;background:#fff;color:#555;cursor:pointer;transition:all .15s;font-family:var(--font)}
 .metric-btn.active{background:#111;color:#fff;border-color:#111}
 .chart-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .chart-header .section-title{margin-bottom:0}
 
 /* ── 周期切换 ── */
 .period-switcher{display:flex;gap:6px;flex-shrink:0}
-.period-btn{padding:5px 16px;border-radius:4px;font-size:.75rem;font-weight:700;border:2px solid #111;background:#fff;color:#555;cursor:pointer;transition:all .15s}
+.period-btn{padding:5px 16px;border-radius:4px;font-size:.75rem;font-weight:900;border:2px solid #111;background:#fff;color:#555;cursor:pointer;transition:all .15s;font-family:var(--font)}
 .period-btn.active{background:#111;color:#fff;border-color:#111}
 .panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
 .panel-header .section-title{margin-bottom:0}
@@ -370,7 +376,7 @@ body::after{content:none}
 <div class="wrap">
 
 <div class="page-header">
-  <h1>无极运营三部<span>数据大盘</span></h1>
+  <h1>无极运营三部<span>数据</span></h1>
   <div class="meta">
     <div class="date-badge" id="dateLabel">加载中…</div>
     无极运营三部 · 管理层视图
