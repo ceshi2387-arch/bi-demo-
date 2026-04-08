@@ -326,10 +326,13 @@ body::after{content:none}
 .dr-group-line{flex:1;height:1px;background:#EEE}
 .dr-modules{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
 @media(max-width:900px){.dr-modules{grid-template-columns:1fr}}
+.dr-module-scroll{max-height:220px;overflow-y:auto;border-radius:0 0 12px 12px}
+.dr-module-scroll::-webkit-scrollbar{width:4px}
+.dr-module-scroll::-webkit-scrollbar-thumb{background:#E0E0E0;border-radius:2px}
 .dr-module-table{width:100%;border-collapse:separate;border-spacing:0;font-size:.78rem;
   border:none;border-radius:8px;overflow:hidden;background:#fff;}
 .dr-module-table th{text-align:left;padding:7px 10px;color:#fff;font-weight:700;font-size:.65rem;
-  border-bottom:none;white-space:nowrap;background:#111;}
+  border-bottom:none;white-space:nowrap;background:#111;position:sticky;top:0;z-index:1;}
 .dr-module-table td{padding:8px 10px;border-bottom:1px solid #E8E8E8;vertical-align:top;color:#444;line-height:1.5}
 .dr-module-table td:first-child{color:#888;font-size:.7rem;white-space:nowrap;font-weight:600}
 .dr-module-table td:nth-child(2){font-weight:800;white-space:nowrap;color:#111}
@@ -554,19 +557,19 @@ body::after{content:none}
         <div class="dr-modules">
           <div class="card glass">
             <div class="section-title">今日问题汇总</div>
-            <div id="dr-issues"><div class="dr-empty">暂无数据</div></div>
+            <div class="dr-module-scroll"><div id="dr-issues"><div class="dr-empty">暂无数据</div></div></div>
           </div>
           <div class="card glass">
             <div class="section-title">需协调事项汇总</div>
-            <div id="dr-coord-list"><div class="dr-empty">暂无数据</div></div>
+            <div class="dr-module-scroll"><div id="dr-coord-list"><div class="dr-empty">暂无数据</div></div></div>
           </div>
           <div class="card glass">
             <div class="section-title">明日工作计划汇总</div>
-            <div id="dr-plans"><div class="dr-empty">暂无数据</div></div>
+            <div class="dr-module-scroll"><div id="dr-plans"><div class="dr-empty">暂无数据</div></div></div>
           </div>
           <div class="card glass">
             <div class="section-title">AI工具 / 自动化监控</div>
-            <div id="dr-ai"><div class="dr-empty">暂无数据</div></div>
+            <div class="dr-module-scroll"><div id="dr-ai"><div class="dr-empty">暂无数据</div></div></div>
           </div>
         </div>
         <div class="section-title" style="margin-top:20px">团队工作量</div>
