@@ -346,6 +346,16 @@ body::after{content:none}
 .dr-seg-btn{padding:6px 18px;border-radius:8px;border:none;background:transparent;font-family:inherit;font-size:.78rem;font-weight:700;color:#666;cursor:pointer;transition:all .18s;white-space:nowrap}
 .dr-seg-btn.active{background:#111;color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.15)}
 
+/* ── 环比徽章 ── */
+.chg-badge{font-size:.58rem;font-weight:700;padding:1px 5px;border-radius:4px;display:inline-block;vertical-align:middle;margin-left:4px;white-space:nowrap}
+.chg-up{background:#DCFCE7;color:#16A34A}
+.chg-dn{background:#FEE2E2;color:#DC2626}
+.chg-flat{background:#F5F5F5;color:#999}
+.tc-stat .tc-chg{font-size:.6rem;font-weight:700;margin-top:1px}
+.tc-stat .tc-chg.chg-up{color:#16A34A}
+.tc-stat .tc-chg.chg-dn{color:#DC2626}
+.tc-stat .tc-chg.chg-flat{color:#999}
+
 .loading{
   display:flex;align-items:center;justify-content:center;
   min-height:240px;color:#999;font-size:.9rem;font-weight:500;
@@ -640,6 +650,20 @@ function fmtD(d){return d.replace(/^\d{4}\//,'').replace('/','/');} // "2026/3/2
 function dateKey(d){const[y,m,day]=d.split('/').map(Number);return y*10000+m*100+day;}
 function sortDates(arr){return arr.sort((a,b)=>dateKey(a)-dateKey(b));}
 
+// ── 环比徽章 ──────────────────────────────────────────────────────────
+function chgBadge(cur,prev,inline){
+  if(!prev||!cur)return '';
+  const pct=((cur-prev)/prev*100);
+  if(Math.abs(pct)<0.05)return inline
+    ?`<span class="chg-badge chg-flat">持平</span>`
+    :`<span class="tc-chg chg-flat">持平</span>`;
+  const up=pct>0;
+  const label=(up?'▲':'▼')+Math.abs(pct).toFixed(1)+'%';
+  return inline
+    ?`<span class="chg-badge ${up?'chg-up':'chg-dn'}">${label}</span>`
+    :`<span class="tc-chg ${up?'chg-up':'chg-dn'}">${label}</span>`;
+}
+
 // ── chart defaults (cartoon/light mode) ──────────────────────────────
 Chart.defaults.color='#555';
 Chart.defaults.borderColor='rgba(0,0,0,.08)';
@@ -800,21 +824,30 @@ function renderContrib(chartId, tableId, flatRows){
 }
 
 // ── total card ────────────────────────────────────────────────────────
-function renderTotalCard(id, groups, dauLabel, hasAd){
+function renderTotalCard(id, groups, dauLabel, hasAd, prevGroups){
   const allList=GROUP_ORDER.flatMap(g=>groups[g]||[]);
   const fields=['日活','新增','自身充值','导量充值','导量'].concat(hasAd?['广告收入']:[]);
   const s=gSum(allList,fields);
   const totalRev=s['自身充值']+s['导量充值']+(hasAd?s['广告收入']:0);
+  let ps=null;
+  if(prevGroups){
+    const prevList=GROUP_ORDER.flatMap(g=>prevGroups[g]||[]);
+    ps=gSum(prevList,fields);
+  }
+  const prevTotalRev=ps?(ps['自身充值']+ps['导量充值']+(hasAd?ps['广告收入']:0)):0;
+  function tc(val,cur,prev,label){
+    return`<div class="tc-stat"><span class="tv">${val}</span>${chgBadge(cur,prev,false)}<span class="tl">${label}</span></div>`;
+  }
   document.getElementById(id).innerHTML=`
     <span class="tc-label">三部合计</span>
     <div class="tc-stats">
-      <div class="tc-stat"><span class="tv">${fmt(s['日活'])}</span><span class="tl">${dauLabel||'日活'}</span></div>
-      <div class="tc-stat"><span class="tv">${fmt(s['新增'])}</span><span class="tl">新增</span></div>
-      <div class="tc-stat"><span class="tv">${fmt(s['自身充值'])}元</span><span class="tl">自身充值</span></div>
-      <div class="tc-stat"><span class="tv">${fmt(s['导量充值'])}元</span><span class="tl">导量充值</span></div>
-      ${hasAd?`<div class="tc-stat"><span class="tv">${fmt(s['广告收入'])}元</span><span class="tl">广告收入</span></div>`:''}
-      <div class="tc-stat"><span class="tv">${fmt(totalRev)}元</span><span class="tl">充值合计</span></div>
-      <div class="tc-stat"><span class="tv">${fmt(s['导量'])}</span><span class="tl">导量</span></div>
+      ${tc(fmt(s['日活']),s['日活'],ps?.['日活'],dauLabel||'日活')}
+      ${tc(fmt(s['新增']),s['新增'],ps?.['新增'],'新增')}
+      ${tc(fmt(s['自身充值'])+'元',s['自身充值'],ps?.['自身充值'],'自身充值')}
+      ${tc(fmt(s['导量充值'])+'元',s['导量充值'],ps?.['导量充值'],'导量充值')}
+      ${hasAd?tc(fmt(s['广告收入'])+'元',s['广告收入'],ps?.['广告收入'],'广告收入'):''}
+      ${tc(fmt(totalRev)+'元',totalRev,prevTotalRev||undefined,'充值合计')}
+      ${tc(fmt(s['导量']),s['导量'],ps?.['导量'],'导量')}
     </div>`;
 }
 
@@ -856,29 +889,46 @@ async function renderYesterday(){
     groups[g].push(r);
   });
 
-  // group cards
+  // 昨日 group cards（带日环比）
+  // 构建 prevGroups 用于 totalCard 对比
+  const prevGroupsYd={};
+  GROUP_ORDER.forEach(gname=>{
+    prevGroupsYd[gname]=(groups[gname]||[]).map(r=>{
+      const prev=prevMap[r['项目']];
+      return{
+        '日活':prev?n(prev['日活']):0,
+        '新增':prev?n(prev['总新增']):0,
+        '自身充值':prev?n(prev['新增充值']):0,
+        '导量充值':prev?n(prev['内部导流充值']):0,
+        '广告收入':prev?n(prev['广告收入']):0,
+        '导量':prev?n(prev['向其他内部产品导量']):0,
+      };
+    });
+  });
   const groupRow=document.getElementById('yd-groupRow');
   GROUP_ORDER.forEach((gname,gi)=>{
     const list=groups[gname]||[];
     const s=gSum(list,['日活','新增','自身充值','导量充值','广告收入','导量']);
+    const ps=gSum(prevGroupsYd[gname]||[],['日活','新增','自身充值','导量充值','广告收入','导量']);
+    const hasPrev=ps['日活']>0;
     const totalRev=s['自身充值']+s['导量充值']+s['广告收入'];
     const color=GROUP_COLORS[gi];
     const card=document.createElement('div');
     card.className=`group-card glass g${gi}`;
     card.innerHTML=`
       <div class="gc-name" style="color:${color}">${gname}<span style="font-size:.65rem;font-weight:500;opacity:.7;margin-left:6px">组长 ${GROUP_LEADERS[gname]||''}</span></div>
-      <div class="gc-dau" style="color:${color}">${fmt(s['日活'])}</div>
+      <div class="gc-dau" style="color:${color}">${fmt(s['日活'])}${hasPrev?chgBadge(s['日活'],ps['日活'],true):''}</div>
       <div class="gc-sub">日活 · ${list.length} 个项目</div>
       <div class="gc-stats">
-        <div class="gc-stat"><span class="sv">${fmt(s['新增'])}</span><span class="sl">新增</span></div>
-        <div class="gc-stat"><span class="sv">${fmt(s['自身充值'])}元</span><span class="sl">自身充值</span></div>
-        <div class="gc-stat"><span class="sv">${fmt(s['导量充值'])}元</span><span class="sl">导量充值</span></div>
-        <div class="gc-stat"><span class="sv">${fmt(s['广告收入'])}元</span><span class="sl">广告</span></div>
-        <div class="gc-stat"><span class="sv">${fmt(s['导量'])}</span><span class="sl">导量</span></div>
+        <div class="gc-stat"><span class="sv">${fmt(s['新增'])}${hasPrev?chgBadge(s['新增'],ps['新增'],true):''}</span><span class="sl">新增</span></div>
+        <div class="gc-stat"><span class="sv">${fmt(s['自身充值'])}元${hasPrev?chgBadge(s['自身充值'],ps['自身充值'],true):''}</span><span class="sl">自身充值</span></div>
+        <div class="gc-stat"><span class="sv">${fmt(s['导量充值'])}元${hasPrev?chgBadge(s['导量充值'],ps['导量充值'],true):''}</span><span class="sl">导量充值</span></div>
+        <div class="gc-stat"><span class="sv">${fmt(s['广告收入'])}元${hasPrev?chgBadge(s['广告收入'],ps['广告收入'],true):''}</span><span class="sl">广告</span></div>
+        <div class="gc-stat"><span class="sv">${fmt(s['导量'])}${hasPrev?chgBadge(s['导量'],ps['导量'],true):''}</span><span class="sl">导量</span></div>
       </div>`;
     groupRow.appendChild(card);
   });
-  renderTotalCard('yd-totalCard', groups, '日活', true);
+  renderTotalCard('yd-totalCard', groups, '日活', true, prevGroupsYd);
 
   // DAU bar chart
   const projColors=rows.map(r=>{
@@ -1094,7 +1144,7 @@ function renderPieCharts(pfx, revSelf, revLead, revAd, expOps, expTech, expBiz){
 }
 
 // ── period panel builder (shared by week & month) ─────────────────────
-function buildPeriodPanel(pfx, gsRows){
+function buildPeriodPanel(pfx, gsRows, prevRows){
   // 销毁该面板内所有旧 Chart 实例
   const contentEl=document.getElementById(`${pfx}-content`);
   contentEl.querySelectorAll('canvas').forEach(c=>{const ch=Chart.getChart(c);if(ch)ch.destroy();});
@@ -1144,30 +1194,56 @@ function buildPeriodPanel(pfx, gsRows){
     groups[g].push(agg[p]);
   });
 
+  // 上一周期聚合（用于环比）
+  let prevGroups=null;
+  if(prevRows&&prevRows.length){
+    const prevAggMap={};
+    prevRows.forEach(r=>{
+      const p=r._proj;
+      if(!prevAggMap[p])prevAggMap[p]={days:0,dau:0,xin:0,self:0,lead:0,ad:0,out:0};
+      const o=prevAggMap[p];
+      o.days++;o.dau+=n(r['日活']);o.xin+=n(r['总新增']);
+      o.self+=n(r['新增充值']);o.lead+=n(r['内部导流充值']);
+      o.ad+=n(r['广告收入']);o.out+=n(r['向其他内部产品导量']);
+    });
+    const prevAgg={};
+    Object.entries(prevAggMap).forEach(([p,o])=>{
+      prevAgg[p]={项目:p,日活:Math.round(o.dau/o.days),新增:o.xin,自身充值:o.self,导量充值:o.lead,广告收入:o.ad,导量:o.out};
+    });
+    prevGroups={};
+    GROUP_ORDER.forEach(g=>{prevGroups[g]=[];});
+    PROJECT_ORDER.forEach(p=>{
+      if(!prevAgg[p])return;
+      const g=PROJECT_GROUP[p];
+      if(prevGroups[g])prevGroups[g].push(prevAgg[p]);
+    });
+  }
+
   // group cards
   const groupRow=document.getElementById(`${pfx}-groupRow`);
   groupRow.innerHTML='';
   GROUP_ORDER.forEach((gname,gi)=>{
     const list=groups[gname]||[];
     const s=gSum(list,['日活','新增','自身充值','导量充值','广告收入','导量']);
-    const totalRev=s['自身充值']+s['导量充值']+s['广告收入'];
+    const ps=prevGroups?gSum(prevGroups[gname]||[],['日活','新增','自身充值','导量充值','广告收入','导量']):null;
+    const hasPrev=ps&&ps['日活']>0;
     const color=GROUP_COLORS[gi];
     const card=document.createElement('div');
     card.className=`group-card glass g${gi}`;
     card.innerHTML=`
       <div class="gc-name" style="color:${color}">${gname}<span style="font-size:.65rem;font-weight:500;opacity:.7;margin-left:6px">组长 ${GROUP_LEADERS[gname]||''}</span></div>
-      <div class="gc-dau" style="color:${color}">${fmt(s['日活'])}</div>
+      <div class="gc-dau" style="color:${color}">${fmt(s['日活'])}${hasPrev?chgBadge(s['日活'],ps['日活'],true):''}</div>
       <div class="gc-sub">日均活跃 · ${list.length} 个项目</div>
       <div class="gc-stats">
-        <div class="gc-stat"><span class="sv">${fmt(s['新增'])}</span><span class="sl">累计新增</span></div>
-        <div class="gc-stat"><span class="sv">${fmt(s['自身充值'])}元</span><span class="sl">自身充值</span></div>
-        <div class="gc-stat"><span class="sv">${fmt(s['导量充值'])}元</span><span class="sl">导量充值</span></div>
-        <div class="gc-stat"><span class="sv">${fmt(s['广告收入'])}元</span><span class="sl">广告收入</span></div>
-        <div class="gc-stat"><span class="sv">${fmt(s['导量'])}</span><span class="sl">累计导量</span></div>
+        <div class="gc-stat"><span class="sv">${fmt(s['新增'])}${hasPrev?chgBadge(s['新增'],ps['新增'],true):''}</span><span class="sl">累计新增</span></div>
+        <div class="gc-stat"><span class="sv">${fmt(s['自身充值'])}元${hasPrev?chgBadge(s['自身充值'],ps['自身充值'],true):''}</span><span class="sl">自身充值</span></div>
+        <div class="gc-stat"><span class="sv">${fmt(s['导量充值'])}元${hasPrev?chgBadge(s['导量充值'],ps['导量充值'],true):''}</span><span class="sl">导量充值</span></div>
+        <div class="gc-stat"><span class="sv">${fmt(s['广告收入'])}元${hasPrev?chgBadge(s['广告收入'],ps['广告收入'],true):''}</span><span class="sl">广告收入</span></div>
+        <div class="gc-stat"><span class="sv">${fmt(s['导量'])}${hasPrev?chgBadge(s['导量'],ps['导量'],true):''}</span><span class="sl">累计导量</span></div>
       </div>`;
     groupRow.appendChild(card);
   });
-  renderTotalCard(`${pfx}-totalCard`, groups, '日均活跃', true);
+  renderTotalCard(`${pfx}-totalCard`, groups, '日均活跃', true, prevGroups);
 
   // trend line chart: group DAU / 新增 switchable
   function makeTrendDS(metric){
@@ -1323,7 +1399,14 @@ function switchWeekPeriod(offset){
   document.getElementById('wk-title').textContent=`${label}小组汇总 · ${range}`;
   document.getElementById('wk-tableTitle').textContent=`各项目${label}汇总 · ${range}`;
   document.querySelectorAll('#wk-period-switcher .period-btn').forEach((b,i)=>b.classList.toggle('active',i===Math.abs(offset)));
-  if(rows.length)buildPeriodPanel('wk',rows);
+  // 上一周的数据（用于环比）
+  const prevMon=new Date(mon);prevMon.setDate(mon.getDate()-7);
+  const prevSun=new Date(sun);prevSun.setDate(sun.getDate()-7);
+  const prevRows=_wkAllRows.filter(r=>{
+    const[y,m,d]=r['日期'].split('/').map(Number);
+    const dt=new Date(y,m-1,d);return dt>=prevMon&&dt<=prevSun;
+  });
+  if(rows.length)buildPeriodPanel('wk',rows,prevRows.length?prevRows:null);
 }
 
 // ── month ──────────────────────────────────────────────────────────────
@@ -1348,7 +1431,11 @@ function switchMonthPeriod(offset){
   document.getElementById('mo-title').textContent=`${label}小组汇总 · ${y}年${m}月 · ${days}天`;
   document.getElementById('mo-tableTitle').textContent=`各项目${label}汇总`;
   document.querySelectorAll('#mo-period-switcher .period-btn').forEach((b,i)=>b.classList.toggle('active',i===Math.abs(offset)));
-  if(rows.length)buildPeriodPanel('mo',rows);
+  // 上一个月的数据（用于环比）
+  const prevRef=new Date(by,bm-1+offset-1,1);
+  const py=prevRef.getFullYear(),pm=prevRef.getMonth()+1;
+  const prevRows=_moAllRows.filter(r=>r['日期'].startsWith(`${py}/${pm}/`));
+  if(rows.length)buildPeriodPanel('mo',rows,prevRows.length?prevRows:null);
 }
 
 // ── team ───────────────────────────────────────────────────────────────
